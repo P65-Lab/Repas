@@ -67,32 +67,14 @@ $('search').oninput=renderRecipes;$('recipeList').onclick=e=>{const b=e.target.c
       add(line,null,null,'texte',r.name,line);
     }
   }
-  const fmt=n=>Number(n.toFixed(2)).toLocaleString('fr-FR');
   const entries=[...map.values()];
-  const formatEntry=v=>{
-    let text;
-    if(v.hasQuantity){
-      const q=v.lo===v.hi?fmt(v.lo):fmt(v.lo)+' à '+fmt(v.hi);
-      if(v.unit==='pièce'){
-        const normalized=norm(singular(v.name));
-        text=q+' '+(aliases[normalized]||v.name);
-      }else{
-        const u=v.unit==='tranche'&&v.lo>1?'tranches':v.unit==='pot'&&v.lo>1?'pots':v.unit==='boule'&&v.lo>1?'boules':v.unit==='boîte'&&v.lo>1?'boîtes':v.unit==='sachet'&&v.lo>1?'sachets':v.unit;
-        text=q+' '+u+' de '+v.name;
-      }
-    }else text=v.name+(v.count>1?' × '+v.count:'');
-    if(['confiture','beurre','vinaigre','huile','huile d’olive','crème fraîche'].includes(norm(v.name).replace('’',"'")))text=v.name;
-    return {text,dishes:[...v.dishes]};
-  };
-     // Liste de courses : noms de produits uniquement, sans quantités.
-   // Les quantités restent dans les fiches recettes.
    const cleanProduct=(value)=>{
      let name=String(value).trim();
-     name=name.replace(/^\d+(?:[,.]\d+)?(?:\s*(?:à|au|-)\s*\d+(?:[,.]\d+)?)?\s*(?:(?:kg|g|ml|cl|l|tranches?|cuillères? à soupe|cuillères? à café|pots?|boules?|boîtes?|sachets?)\s+(?:de\s+|d['’])?)?/i,'');
+     name=name.replace(/^\d+(?:[,.]\d+)?(?:\s*(?:à|au|-)\s*\d+(?:[,.]\d+)?)?\s*(?:(?:kg|g|ml|cl|l|tranches?|cuillères? à soupe|cuillères? à café|pots?|boules?|boîtes?|sachets?|bottes?)\s+(?:de\s+|d['’])?)?/i,'');
      name=name.replace(/^(?:de\s+|d['’])/i,'').trim();
      if(!name)return '';
      const key=norm(singular(name));
-     const labels={'œuf':'Œufs','oeuf':'Œufs','steaks haches':'Steaks hachés','steak hache':'Steaks hachés','carotte':'Carottes','haricots verts':'Haricots verts','yaourt nature':'Yaourts nature','yaourt au citron':'Yaourts au citron','yaourt a la vanille':'Yaourts à la vanille','concombre':'Concombres','tomate':'Tomates','pomme de terre':'Pommes de terre'};
+     const labels={'œuf':'Œufs','oeuf':'Œufs','steaks haches':'Steaks hachés','steak hache':'Steaks hachés','carotte':'Carottes','haricots verts':'Haricots verts','yaourt nature':'Yaourts nature','yaourt au citron':'Yaourts au citron','yaourt a la vanille':'Yaourts à la vanille','concombre':'Concombres','tomate':'Tomates','pomme de terre':'Pommes de terre','radis':'Radis','citron':'Citron','riz':'Riz','fromage blanc':'Fromage blanc','beurre':'Beurre'};
      return labels[key]||name.charAt(0).toLocaleUpperCase('fr')+name.slice(1);
    };
    const merged=new Map();
@@ -107,12 +89,13 @@ $('search').oninput=renderRecipes;$('recipeList').onclick=e=>{const b=e.target.c
 
 }
 const COURSE_GROUPS=[['Fruits et légumes',/\\b(?:fruit|pomme|banane|carotte|concombre|courgette|tomate|radis|salade|avocat|citron|oignon|ail|poireau|endive|potiron|brocoli|betterave|celeri|céleri|mache|mâche|haricots verts|petits pois|legumes|légumes|mais|maïs)\\b/i],['Viandes et poissons',/\\b(?:steak|poulet|dinde|saumon|cabillaud|jambon|saucisse|cordon bleu|nuggets|lardons|viande|poisson|boeuf|bœuf)\\b/i],['Produits frais',/\\b(?:yaourt|petit.suisse|fromage|creme|crème|beurre|lait|œuf|oeuf|mozzarella)\\b/i],['Épicerie',/\\b(?:riz|pates|pâtes|coquillettes|lentilles|pain|farine|sucre|miel|confiture|huile|vinaigre|moutarde|cafe|café|the|thé|chocolat|compote|cannelle|laurier|basilic|ciboulette|herbes|noix|rillettes|pate|pâté|cornichon|chapelure|brique|soupe|sauce|macedoine|macédoine|boite|boîte)\\b/i]];
-function courseGroup(text){const name=String(text).replace(/^\\d+(?:[,.]\\d+)?(?:\\s+à\\s+\\d+(?:[,.]\\d+)?)?\\s*(?:(?:kg|g|ml|cl|l|tranches?|cuillères? à soupe|cuillères? à café|pots?|boules?|boîtes?|sachets?)\\s+(?:de\\s+|d['’])?)?/i,'').toLocaleLowerCase('fr');for(const [group,re] of COURSE_GROUPS)if(re.test(name))return group;return 'Épicerie'}
-const FOOD_GROUPS=COURSE_GROUPS.map(x=>x[0]);
-function allUniverses(){return ['Tous les univers',...FOOD_GROUPS,...universes,'Suggestions — À vérifier dans la cuisine']}
-function refreshUniverseSelect(){const el=$('universeFilter');el.innerHTML=allUniverses().map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');if(!allUniverses().includes(activeUniverse))activeUniverse='Tous les univers';el.value=activeUniverse}
-$('universeFilter').onchange=e=>{activeUniverse=e.target.value;renderShopping()};
-$('addUniverse').onclick=()=>{const el=$('newUniverse'),name=el.value.trim();if(!name)return;if(allUniverses().some(x=>x.toLocaleLowerCase('fr')===name.toLocaleLowerCase('fr'))){alert('Cet univers existe déjà.');return}universes.push(name);activeUniverse=name;el.value='';save();renderShopping()};
+function courseGroup(text){
+ const n=String(text).toLocaleLowerCase('fr').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/œ/g,'oe');
+ if(/(?:haricots? verts?|radis|citron|carott|mache|salade|banane|pomme|tomate|concombre|courgette|oignon|ail|endive|brocoli|betterave|celeri|avocat|potiron|poireau|legume|petits pois|mais)/.test(n))return 'Fruits et légumes';
+ if(/(?:steak|viande|boeuf|poulet|dinde|saumon|cabillaud|jambon|saucisse|cordon bleu|nugget|lardon|poisson)/.test(n))return 'Viandes et poissons';
+ if(/(?:yaourt|petit.suisse|fromage|creme|beurre|lait|oeuf|mozzarella)/.test(n))return 'Produits frais';
+ return 'Épicerie';
+}
 function groupedCourses(items,render){return FOOD_GROUPS.filter(group=>activeUniverse==='Tous les univers'||activeUniverse===group).map(group=>{const rows=items.map((item,i)=>({item,i})).filter(x=>courseGroup(x.item.text)===group);return rows.length?`<h3 class="course-heading">${group}</h3>`+rows.map(x=>render(x.item,x.i)).join(''):''}).join('')}
 // Produits courants : suggestions facultatives, jamais ajoutées automatiquement.
 const PANTRY_PRODUCTS=[['Moutarde',/\bmoutarde\b/i],['Mayonnaise',/\bmayonnaise\b/i],['Sucre',/\bsucre\b/i],['Miel',/\bmiel\b/i],['Huile d’olive',/\bhuile d[’']olive\b/i],['Huile',/\bhuile\b/i],['Vinaigre',/\bvinaigre\b/i],['Ciboulette',/\bciboulette\b/i],['Sel',/\bsel\b/i],['Poivre',/\bpoivre\b/i],['Vinaigrette',/\bvinaigrette\b/i],['Basilic',/\bbasilic\b/i],['Fines herbes',/\bfines herbes\b/i],['Cannelle',/\bcannelle\b/i],['Laurier',/\blaurier\b/i]];
