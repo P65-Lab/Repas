@@ -84,8 +84,26 @@ $('search').oninput=renderRecipes;$('recipeList').onclick=e=>{const b=e.target.c
     if(['confiture','beurre','vinaigre','huile','huile d’olive','crème fraîche'].includes(norm(v.name).replace('’',"'")))text=v.name;
     return {text,dishes:[...v.dishes]};
   };
-  const results=entries.map(formatEntry);
-  return results.sort((a,b)=>a.text.replace(/^\d+(?:[,.]\d+)?(?:\s+à\s+\d+(?:[,.]\d+)?)?\s+/,'').localeCompare(b.text.replace(/^\d+(?:[,.]\d+)?(?:\s+à\s+\d+(?:[,.]\d+)?)?\s+/,''),'fr'));
+     // Liste de courses : noms de produits uniquement, sans quantités.
+   // Les quantités restent dans les fiches recettes.
+   const cleanProduct=(value)=>{
+     let name=String(value).trim();
+     name=name.replace(/^\d+(?:[,.]\d+)?(?:\s*(?:à|au|-)\s*\d+(?:[,.]\d+)?)?\s*(?:(?:kg|g|ml|cl|l|tranches?|cuillères? à soupe|cuillères? à café|pots?|boules?|boîtes?|sachets?)\s+(?:de\s+|d['’])?)?/i,'');
+     name=name.replace(/^(?:de\s+|d['’])/i,'').trim();
+     if(!name)return '';
+     const key=norm(singular(name));
+     const labels={'œuf':'Œufs','oeuf':'Œufs','steaks haches':'Steaks hachés','steak hache':'Steaks hachés','carotte':'Carottes','haricots verts':'Haricots verts','yaourt nature':'Yaourts nature','yaourt au citron':'Yaourts au citron','yaourt a la vanille':'Yaourts à la vanille','concombre':'Concombres','tomate':'Tomates','pomme de terre':'Pommes de terre'};
+     return labels[key]||name.charAt(0).toLocaleUpperCase('fr')+name.slice(1);
+   };
+   const merged=new Map();
+   for(const v of entries){
+     const name=cleanProduct(v.name);
+     if(!name)continue;
+     const key=norm(name);
+     if(!merged.has(key))merged.set(key,{text:name,dishes:new Set()});
+     for(const dish of v.dishes)merged.get(key).dishes.add(dish);
+   }
+   return [...merged.values()].map(v=>({text:v.text,dishes:[...v.dishes]})).sort((a,b)=>a.text.localeCompare(b.text,'fr'));
 
 }
 const COURSE_GROUPS=[['Fruits et légumes',/\\b(?:fruit|pomme|banane|carotte|concombre|courgette|tomate|radis|salade|avocat|citron|oignon|ail|poireau|endive|potiron|brocoli|betterave|celeri|céleri|mache|mâche|haricots verts|petits pois|legumes|légumes|mais|maïs)\\b/i],['Viandes et poissons',/\\b(?:steak|poulet|dinde|saumon|cabillaud|jambon|saucisse|cordon bleu|nuggets|lardons|viande|poisson|boeuf|bœuf)\\b/i],['Produits frais',/\\b(?:yaourt|petit.suisse|fromage|creme|crème|beurre|lait|œuf|oeuf|mozzarella)\\b/i],['Épicerie',/\\b(?:riz|pates|pâtes|coquillettes|lentilles|pain|farine|sucre|miel|confiture|huile|vinaigre|moutarde|cafe|café|the|thé|chocolat|compote|cannelle|laurier|basilic|ciboulette|herbes|noix|rillettes|pate|pâté|cornichon|chapelure|brique|soupe|sauce|macedoine|macédoine|boite|boîte)\\b/i]];
